@@ -118,6 +118,7 @@ def log_month(debts: pd.DataFrame, plan: List[Dict], month: int) -> List[Dict]:
             "Original Balance": round(debts.at[i, "Balance"], 2),
             "Interest Rate": debts.at[i, "Rate"],
             "Min Payment": round(debts.at[i, "MinPayment"], 2),
+            "Extra Payment": round(p.get("extra", 0.0), 2),
             "Starting Balance": round(debts.at[i, "Remaining"] + p["principal_paid"], 2),
             "Monthly Payment": round(p["total_payment"], 2),
             "Interest Paid": round(p["interest"], 2),

@@ -101,7 +101,7 @@ def snowball_then_avalanche_strategy(debts, payment_plan, monthly_extra):
     paid_off = sum(debts["PaidOff"])
 
     # Switch strategy after x are paid off
-    if paid_off < 3:
+    if paid_off <= 3:
         return snowball_strategy(debts, payment_plan, monthly_extra)
     else:
         return avalanche_strategy(debts, payment_plan, monthly_extra)
