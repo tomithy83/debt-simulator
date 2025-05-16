@@ -6,9 +6,10 @@ from dateutil.relativedelta import relativedelta
 
 
 FALLBACK_DATA = [
-    {"Loan": "Loan A", "Balance": 5000.00, "Rate": 5.00, "MinPayment": 40.00},
-    {"Loan": "Loan B", "Balance": 10000.00, "Rate": 10.00, "MinPayment": 150.00},
-    {"Loan": "Loan C", "Balance": 7500.00, "Rate": 7.00, "MinPayment": 75.00},
+    {"Loan": "HomeLoan", "Rate": 3.0, "Balance": 200000.0, "MinPayment": 800.0},
+    {"Loan": "CreditCard1", "Rate": 24.0, "Balance": 10000.0, "MinPayment": 50.0},
+    {"Loan": "CreditCard2", "Rate": 22.0, "Balance": 12000.0, "MinPayment": 60.0},
+    {"Loan": "CarLoan", "Rate": 18.0, "Balance": 25000.0, "MinPayment": 100.0}
 ]
 
 def load_debts(csv_path=None):
@@ -29,11 +30,16 @@ def simulate_repayment(
     schedule = []
     month = 1
 
+    extra_pool = monthly_extra
+
     while not debts["PaidOff"].all() and month <= max_months:
         payment_plan = calculate_monthly_interest_and_base(debts)
-        extra_allocation = strategy_func(debts, payment_plan, monthly_extra)
-        apply_payments(debts, payment_plan, extra_allocation, monthly_extra)
+        extra_allocation = strategy_func(debts, payment_plan, extra_pool)
+        freed_up = apply_payments(debts, payment_plan, extra_allocation, extra_pool)
         schedule.extend(log_month(debts, payment_plan, month))
+
+        # Add newly freed-up payments into the extra pool
+        extra_pool += freed_up
         month += 1
 
     return schedule
@@ -63,8 +69,9 @@ def apply_payments(
         plan: List[Dict],
         extra_allocation: Dict[int, float],
         monthly_extra: float
-        ):
+        ) -> float:
     remaining_extra = monthly_extra
+    freed_payment_total = 0.0  
 
     for p in plan:
         i = p["index"]
@@ -79,12 +86,15 @@ def apply_payments(
         if debts.at[i, "Remaining"] <= 0.01:
             debts.at[i, "Remaining"] = 0
             debts.at[i, "PaidOff"] = True
+            freed_payment_total += debts.at[i, "MinPayment"] 
 
         p["extra"] = extra
         p["total_payment"] = total_payment
         p["principal_paid"] = principal_paid
 
         remaining_extra -= extra
+
+    return freed_payment_total  
 
 def month_to_date(month: int, start_month: datetime = None) -> List[str]:
     """Returns a list of YYYY-MM month strings going back `months` from `start_month`."""
@@ -105,8 +115,10 @@ def log_month(debts: pd.DataFrame, plan: List[Dict], month: int) -> List[Dict]:
             "Month": month,
             "Date": month_to_date(month),
             "Loan": debts.at[i, "Loan"],
-            "Starting Balance": round(debts.at[i, "Remaining"] + p["principal_paid"], 2),
+            "Original Balance": round(debts.at[i, "Balance"], 2),
             "Interest Rate": debts.at[i, "Rate"],
+            "Min Payment": round(debts.at[i, "MinPayment"], 2),
+            "Starting Balance": round(debts.at[i, "Remaining"] + p["principal_paid"], 2),
             "Monthly Payment": round(p["total_payment"], 2),
             "Interest Paid": round(p["interest"], 2),
             "Principal Paid": round(p["principal_paid"], 2),
@@ -138,6 +150,7 @@ def generate_strategy_summary(debts_df, schedule_df):
             "Loan": loan_id,
             "Original Balance": loan.Balance,
             "Rate": loan.Rate,
+            "Min Payment": loan.MinPayment,  # NEW
             "Payoff Month": payoff_month,
             "Months to Payoff": months,
             "Principal Paid": round(principal_paid, 2),

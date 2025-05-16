@@ -108,13 +108,15 @@ def snowball_then_avalanche_strategy(debts, payment_plan, monthly_extra):
 
 def avalanche_then_snowball_strategy(debts, payment_plan, monthly_extra):
     # Count how many loans are paid off
-    paid_off = sum(debts["PaidOff"]) +1
+    paid_off = sum(debts["PaidOff"])
 
     # Switch strategy after x are paid off
-    if paid_off > 2:
+    if paid_off >= 2:
         return snowball_strategy(debts, payment_plan, monthly_extra)
     else:
         return avalanche_strategy(debts, payment_plan, monthly_extra)
+
+
 
 def allocate_extra_funds_fully(plan, priority_indices, extra_total):
     allocation = {i: 0 for i in priority_indices}
